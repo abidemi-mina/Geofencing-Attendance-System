@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% block title %}{{ course.code }} Students{% endblock %}
+{% block page_heading %}Course Students{% endblock %}
+{% block page_subheading %}All students registered under {{ course.code }} — {{ course.title }}.{% endblock %}
+
+{% block content %}
+<div class="card" style="padding:0;overflow:hidden;">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;padding:18px 20px;border-bottom:1px solid var(--border);">
+        <div>
+            <div class="card-title">
+                <span style="font-size:12.5px;background:var(--primary-3);color:var(--primary);border-radius:6px;padding:3px 8px;font-weight:700;margin-right:10px;">{{ course.code }}</span>
+                Enrolled Students
+            </div>
+            <div class="card-subtitle" style="margin-top:4px;">{{ students|length }} student{{ students|length|pluralize }} registered.</div>
+        </div>
+        <div class="toolbar">
+            <a href="{% url 'upload-students' %}" class="btn btn-secondary">
+                <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
+                Add More via CSV
+            </a>
+            <a href="{% url 'course-records' course.id %}" class="btn btn-ghost">View Records</a>
+            <a href="{% url 'dashboard' %}" class="btn btn-ghost">← Dashboard</a>
+        </div>
+    </div>
+
+    <!-- Search -->
+    <div style="padding:14px 20px;border-bottom:1px solid var(--border);background:var(--panel-2);">
+        <input type="text" id="studentSearch" placeholder="Search by name or matric…" style="max-width:340px;margin:0;" oninput="filterStudents()">
+    </div>
+
+    <div class="table-wrap" style="border:none;border-radius:0;">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width:44px;">#</th>
+                    <th>Student Name</th>
+                    <th>Matric Number</th>
+                </tr>
+            </thead>
+            <tbody id="studentBody">
+                {% for reg in students %}
+                <tr>
+                    <td class="td-muted" style="font-size:12px;">{{ forloop.counter }}</td>
+                    <td>
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            <div style="width:30px;height:30px;border-radius:50%;background:var(--primary-3);color:var(--primary);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">
+                                {{ reg.student.full_name|slice:":2"|upper }}
+                            </div>
+                            <span style="font-weight:500;">{{ reg.student.full_name }}</span>
+                        </div>
+                    </td>
+                    <td><span style="font-family:var(--mono);font-size:12.5px;background:var(--panel-2);border:1px solid var(--border);border-radius:6px;padding:2px 8px;">{{ reg.student.matric_number }}</span></td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="3">
+                        <div class="empty-state">
+                            <div class="empty-state-icon">👥</div>
+                            <h3>No students yet</h3>
+                            <p>Upload a CSV file to register students to this course.</p>
+                            <a href="{% url 'upload-students' %}" class="btn btn-primary">Upload Students</a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+function filterStudents() {
+    const q = document.getElementById('studentSearch').value.toLowerCase();
+    document.querySelectorAll('#studentBody tr').forEach(row => {
+        row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+    });
+}
+</script>
+{% endblock %}

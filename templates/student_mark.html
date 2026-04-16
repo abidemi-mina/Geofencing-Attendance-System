@@ -1,0 +1,442 @@
+{% extends 'base.html' %}
+{% block title %}Mark Attendance{% endblock %}
+{% block page_heading %}Mark Attendance{% endblock %}
+{% block page_subheading %}Verify your identity and location to record your attendance.{% endblock %}
+
+{% block extra_head %}
+<style>
+.session-card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 16px 18px;
+    background: var(--panel);
+    cursor: pointer;
+    transition: border-color .15s, box-shadow .15s;
+    text-decoration: none; color: inherit; display: block;
+}
+.session-card:hover {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(26,58,108,.10);
+}
+
+.token-display {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 14px 16px;
+    margin-bottom: 16px;
+}
+
+.token-value {
+    font-family: var(--mono);
+    font-size: 18px;
+    font-weight: 500;
+    letter-spacing: .1em;
+    word-break: break-all;
+    color: var(--primary);
+}
+
+.token-expiry { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+.step-row {
+    display: flex; align-items: flex-start; gap: 14px;
+    padding: 14px 0; border-bottom: 1px solid var(--border);
+}
+.step-row:last-child { border-bottom: none; }
+
+.step-num {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--primary); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; flex-shrink: 0;
+}
+
+.step-num.done { background: var(--success); }
+
+.step-text h4  { font-size: 13.5px; font-weight: 600; margin-bottom: 3px; }
+.step-text p   { font-size: 12.5px; color: var(--muted); margin: 0; line-height: 1.4; }
+
+.mark-result {
+    padding: 14px 16px; border-radius: var(--radius-sm);
+    font-size: 13.5px; font-weight: 500; margin-top: 14px;
+    border: 1px solid; display: none; align-items: center; gap: 10px;
+}
+.mark-result.visible { display: flex; }
+.mark-result.success { background: var(--success-bg); border-color: #bbf7d0; color: var(--success); }
+.mark-result.error   { background: var(--danger-bg);  border-color: #fecaca; color: var(--danger); }
+.mark-result.loading { background: var(--info-bg);    border-color: #bfdbfe; color: var(--info); }
+
+.location-status {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12.5px; padding: 10px 14px;
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+    background: var(--panel-2); margin-bottom: 14px;
+}
+.location-status.ok      { background: var(--success-bg); border-color: #bbf7d0; color: var(--success); }
+.location-status.denied  { background: var(--danger-bg);  border-color: #fecaca; color: var(--danger); }
+.location-status.pending { background: var(--warning-bg); border-color: #fde68a; color: var(--warning); }
+
+@keyframes tokenPulse {
+    0%   { opacity: 1; }
+    50%  { opacity: .5; }
+    100% { opacity: 1; }
+}
+.token-refreshing { animation: tokenPulse .6s 2; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+{% if active_sessions and not session %}
+<!-- ══════════════════════════════════════════════════
+     Session selection screen
+══════════════════════════════════════════════════ -->
+<div style="max-width:680px;margin:0 auto;">
+    <div class="card" style="margin-bottom:20px;padding:20px 24px;display:flex;align-items:center;gap:16px;">
+        <div style="width:48px;height:48px;border-radius:12px;background:var(--primary-3);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <svg viewBox="0 0 20 20" fill="currentColor" style="width:22px;height:22px;color:var(--primary);"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/></svg>
+        </div>
+        <div>
+            <div style="font-size:15px;font-weight:600;">Available Sessions</div>
+            <div style="font-size:13px;color:var(--muted);margin-top:2px;">Your lecturer has opened the following sessions for attendance. Select the one you were invited to.</div>
+        </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:12px;">
+        {% for item in active_sessions %}
+        <a href="{% url 'student-mark-page' item.id %}" class="session-card">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+                <div>
+                    <div style="font-size:15px;font-weight:600;margin-bottom:4px;">{{ item.title }}</div>
+                    <div style="font-size:13px;color:var(--muted);">{{ item.course.code }} — {{ item.course.title }}</div>
+                    <div style="margin-top:8px;">
+                        <span style="font-size:11.5px;background:var(--primary-3);color:var(--primary);border-radius:6px;padding:3px 8px;font-weight:600;">Level {{ item.course.level }}</span>
+                    </div>
+                </div>
+                <div>
+                    <span class="badge badge-active">
+                        <span class="badge-dot pulse" style="background:var(--success);"></span>
+                        Live
+                    </span>
+                </div>
+            </div>
+        </a>
+        {% empty %}
+        <div class="empty-state">
+            <div class="empty-state-icon">🕐</div>
+            <h3>No active sessions</h3>
+            <p>Your lecturer has not opened any sessions yet. Check back shortly or use the link they shared.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+{% if session %}
+<!-- ══════════════════════════════════════════════════
+     Mark attendance screen
+══════════════════════════════════════════════════ -->
+<div class="grid-2" style="align-items:start;max-width:1000px;">
+
+    <!-- Left: Form -->
+    <div style="display:flex;flex-direction:column;gap:16px;">
+
+        <!-- Session info banner -->
+        <div class="card" style="padding:16px 18px;background:var(--primary);color:#fff;">
+            <div style="font-size:12px;opacity:.7;font-weight:500;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">Active Session</div>
+            <div style="font-size:17px;font-weight:700;margin-bottom:4px;">{{ session.title }}</div>
+            <div style="font-size:13px;opacity:.85;">{{ session.course.code }} — {{ session.course.title }}</div>
+            <div style="margin-top:10px;display:flex;align-items:center;gap:8px;">
+                <span style="background:rgba(255,255,255,.18);border-radius:999px;padding:3px 10px;font-size:12px;font-weight:600;">Level {{ session.course.level }}</span>
+                <span id="sessionStateLabel" style="background:rgba(255,255,255,.18);border-radius:999px;padding:3px 10px;font-size:12px;font-weight:600;">Checking...</span>
+            </div>
+        </div>
+
+        <!-- Live token -->
+        <div class="card" style="padding:16px 18px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                <div style="font-size:13.5px;font-weight:600;">Live Attendance Token</div>
+                <div style="display:flex;align-items:center;gap:6px;">
+                    <span class="badge-dot pulse" style="background:var(--success);width:7px;height:7px;border-radius:50%;display:inline-block;"></span>
+                    <span style="font-size:12px;color:var(--muted);">Auto-refreshing</span>
+                </div>
+            </div>
+            <div class="token-display">
+                <div class="token-value" id="liveToken">Loading...</div>
+                <div class="token-expiry" id="tokenExpiry">Fetching token...</div>
+            </div>
+            <div style="font-size:12px;color:var(--muted);line-height:1.5;">
+                This token is automatically used when you click <strong>Mark Attendance</strong>. It rotates every 45 seconds to prevent sharing.
+            </div>
+        </div>
+
+        <!-- Matric search -->
+        <div class="card" style="padding:16px 18px;">
+            <div style="font-size:13.5px;font-weight:600;margin-bottom:14px;">Confirm Your Identity</div>
+
+            <div class="form-group">
+                <label class="form-label" for="matricInput">Search Matric Number <span class="required">*</span></label>
+                <input type="text" id="matricInput" placeholder="Type your matric number..." autocomplete="off" style="margin-bottom:6px;">
+                <ul id="suggestions" class="suggestions" style="display:none;margin:0 0 12px;"></ul>
+                <div id="selectedBanner" style="display:none;align-items:center;gap:10px;padding:10px 12px;background:var(--success-bg);border:1px solid #bbf7d0;border-radius:var(--radius-sm);margin-bottom:14px;">
+                    <svg viewBox="0 0 20 20" fill="currentColor" style="width:16px;height:16px;color:var(--success);flex-shrink:0;"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                    <span style="font-size:13px;color:var(--success);font-weight:500;" id="selectedName">Student selected</span>
+                </div>
+            </div>
+
+            <!-- Location status -->
+            <div id="locationStatus" class="location-status pending">
+                <svg viewBox="0 0 20 20" fill="currentColor" style="width:15px;height:15px;flex-shrink:0;"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
+                <span id="locationText">Location access required — will be requested on submit.</span>
+            </div>
+
+            <button id="markBtn" class="btn btn-primary btn-lg" style="width:100%;justify-content:center;" onclick="markAttendance()">
+                <svg viewBox="0 0 20 20" fill="currentColor" style="width:16px;height:16px;"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                Mark My Attendance
+            </button>
+
+            <div id="markResult" class="mark-result"></div>
+        </div>
+    </div>
+
+    <!-- Right: How it works -->
+    <div style="display:flex;flex-direction:column;gap:16px;">
+        <div class="card" style="padding:16px 18px;">
+            <div style="font-size:13.5px;font-weight:600;margin-bottom:14px;">How Attendance Works</div>
+
+            <div class="step-row">
+                <div class="step-num">1</div>
+                <div class="step-text">
+                    <h4>Open the session link</h4>
+                    <p>Use the link or QR code shared by your lecturer. It opens this page directly.</p>
+                </div>
+            </div>
+            <div class="step-row">
+                <div class="step-num">2</div>
+                <div class="step-text">
+                    <h4>Search your matric number</h4>
+                    <p>Start typing your matric number and select yourself from the dropdown. This confirms your identity.</p>
+                </div>
+            </div>
+            <div class="step-row">
+                <div class="step-num">3</div>
+                <div class="step-text">
+                    <h4>Allow location access</h4>
+                    <p>Your browser will ask for location permission. You must be physically inside the classroom or designated area.</p>
+                </div>
+            </div>
+            <div class="step-row">
+                <div class="step-num">4</div>
+                <div class="step-text">
+                    <h4>Click Mark Attendance</h4>
+                    <p>The system verifies your identity, live token, device, and location simultaneously before recording.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card" style="padding:16px 18px;border:1px solid #fde68a;background:var(--warning-bg);">
+            <div style="font-size:13px;font-weight:600;color:var(--warning);margin-bottom:8px;">Important Notices</div>
+            <ul style="list-style:none;display:flex;flex-direction:column;gap:6px;">
+                <li style="font-size:12.5px;color:#78350f;display:flex;gap:8px;"><span>•</span><span>Each student can only mark once per session.</span></li>
+                <li style="font-size:12.5px;color:#78350f;display:flex;gap:8px;"><span>•</span><span>Mock or spoofed locations are automatically detected and rejected.</span></li>
+                <li style="font-size:12.5px;color:#78350f;display:flex;gap:8px;"><span>•</span><span>Your device is registered on first use. Use the same device each time.</span></li>
+                <li style="font-size:12.5px;color:#78350f;display:flex;gap:8px;"><span>•</span><span>Marking after the late threshold records you as <strong>Late</strong>.</span></li>
+            </ul>
+        </div>
+    </div>
+
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+{% if session %}
+<script>
+const csrfToken  = "{{ csrf_token }}";
+let sessionToken = "";
+let selectedMatric = "";
+
+/* ── Token refresh ── */
+async function refreshToken() {
+    try {
+        const res  = await fetch("{% url 'session-token-api' session.id %}");
+        const data = await res.json();
+        sessionToken = data.token;
+
+        const tokenEl = document.getElementById('liveToken');
+        tokenEl.classList.add('token-refreshing');
+        tokenEl.textContent = data.token;
+        setTimeout(() => tokenEl.classList.remove('token-refreshing'), 1200);
+
+        const exp = new Date(data.expires_at);
+        document.getElementById('tokenExpiry').textContent =
+            `Expires at ${exp.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit', second:'2-digit' })}`;
+    } catch(e) {
+        document.getElementById('liveToken').textContent = 'Error fetching token';
+    }
+}
+
+/* ── Matric autocomplete ── */
+const matricInput   = document.getElementById('matricInput');
+const suggestions   = document.getElementById('suggestions');
+const selectedBanner = document.getElementById('selectedBanner');
+const selectedName  = document.getElementById('selectedName');
+
+matricInput.addEventListener('input', async () => {
+    const q = matricInput.value.trim();
+    selectedMatric = '';
+    selectedBanner.style.display = 'none';
+
+    if (q.length < 2) { suggestions.style.display = 'none'; return; }
+
+    const res  = await fetch(`/search-students/?q=${encodeURIComponent(q)}`);
+    const data = await res.json();
+    suggestions.innerHTML = '';
+
+    if (data.results.length === 0) {
+        suggestions.style.display = 'none'; return;
+    }
+
+    data.results.forEach(item => {
+        const li = document.createElement('li');
+        li.innerHTML = `<strong>${item.matric}</strong> &mdash; ${item.name}`;
+        li.onclick = () => {
+            selectedMatric = item.matric;
+            matricInput.value = item.matric;
+            suggestions.style.display = 'none';
+            selectedName.textContent = `${item.name} (${item.matric})`;
+            selectedBanner.style.display = 'flex';
+        };
+        suggestions.appendChild(li);
+    });
+    suggestions.style.display = 'block';
+});
+
+document.addEventListener('click', e => {
+    if (!e.target.closest('#matricInput') && !e.target.closest('#suggestions')) {
+        suggestions.style.display = 'none';
+    }
+});
+
+/* ── Device fingerprint ── */
+async function getDeviceFingerprint() {
+    return [
+        navigator.userAgent, navigator.language,
+        screen.width, screen.height,
+        new Date().getTimezoneOffset(),
+        navigator.platform || 'unknown'
+    ].join('|');
+}
+
+/* ── Location watch ── */
+const locStatus = document.getElementById('locationStatus');
+const locText   = document.getElementById('locationText');
+
+navigator.permissions?.query({ name: 'geolocation' }).then(perm => {
+    if (perm.state === 'granted') {
+        locStatus.className = 'location-status ok';
+        locText.textContent = 'Location access already granted.';
+    } else if (perm.state === 'denied') {
+        locStatus.className = 'location-status denied';
+        locText.textContent = 'Location access denied. Enable it in your browser settings.';
+    }
+});
+
+/* ── Mark attendance ── */
+async function markAttendance() {
+    const result = document.getElementById('markResult');
+    const btn    = document.getElementById('markBtn');
+
+    if (!selectedMatric) {
+        showResult('error', 'Please search and select your matric number first.');
+        return;
+    }
+
+    if (!navigator.geolocation) {
+        showResult('error', 'Geolocation is not supported on this device.');
+        return;
+    }
+
+    showResult('loading', 'Requesting your location…');
+    btn.classList.add('btn-loading');
+    btn.disabled = true;
+
+    locStatus.className = 'location-status pending';
+    locText.textContent = 'Acquiring GPS location…';
+
+    navigator.geolocation.getCurrentPosition(
+        async (position) => {
+            locStatus.className = 'location-status ok';
+            locText.textContent = `Location acquired (±${Math.round(position.coords.accuracy)}m accuracy)`;
+
+            showResult('loading', 'Submitting attendance…');
+
+            const payload = {
+                matric_number:      selectedMatric,
+                latitude:           position.coords.latitude,
+                longitude:          position.coords.longitude,
+                accuracy_meters:    position.coords.accuracy,
+                device_fingerprint: await getDeviceFingerprint(),
+                token:              sessionToken,
+                is_mock_location:   false
+            };
+
+            try {
+                const res  = await fetch("{% url 'mark-attendance-api' session.id %}", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+
+                if (data.ok) {
+                    showResult('success', data.message || 'Attendance marked successfully!');
+                    btn.textContent = '✓ Attendance Recorded';
+                    btn.disabled = true;
+                    btn.classList.remove('btn-loading');
+                    btn.style.background = 'var(--success)';
+                    window.toast('Attendance recorded!', `Status: ${data.status}`, 'success');
+                } else {
+                    showResult('error', data.message || 'Failed to mark attendance.');
+                    btn.classList.remove('btn-loading');
+                    btn.disabled = false;
+                    window.toast('Not recorded', data.message, 'error');
+                }
+            } catch(e) {
+                showResult('error', 'Network error. Please check your connection and try again.');
+                btn.classList.remove('btn-loading');
+                btn.disabled = false;
+            }
+        },
+        (err) => {
+            locStatus.className = 'location-status denied';
+            locText.textContent = 'Location access was denied or unavailable.';
+            const msg = err.code === 1 ? 'Location permission denied. Enable it in your browser settings.'
+                      : err.code === 2 ? 'Location unavailable. Ensure GPS is on.'
+                      : 'Location request timed out. Try again.';
+            showResult('error', msg);
+            btn.classList.remove('btn-loading');
+            btn.disabled = false;
+        },
+        { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+    );
+}
+
+function showResult(type, msg) {
+    const el = document.getElementById('markResult');
+    const icons = {
+        success: '<svg viewBox="0 0 20 20" fill="currentColor" style="width:18px;height:18px;flex-shrink:0;"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>',
+        error:   '<svg viewBox="0 0 20 20" fill="currentColor" style="width:18px;height:18px;flex-shrink:0;"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>',
+        loading: '<div class="spinner" style="width:16px;height:16px;flex-shrink:0;"></div>'
+    };
+    el.className = `mark-result visible ${type}`;
+    el.innerHTML = `${icons[type]||''}<span>${msg}</span>`;
+}
+
+/* ── Init ── */
+refreshToken();
+setInterval(refreshToken, 30000);
+</script>
+{% endif %}
+{% endblock %}

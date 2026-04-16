@@ -1,0 +1,85 @@
+{% comment %}
+====== course_records.html ======
+Save this as: course_records.html
+{% endcomment %}
+{% extends 'base.html' %}
+{% block title %}{{ course.code }} Records{% endblock %}
+{% block page_heading %}Attendance Records{% endblock %}
+{% block page_subheading %}All attendance entries logged under {{ course.code }} — {{ course.title }}.{% endblock %}
+
+{% block content %}
+<div class="card" style="padding:0;overflow:hidden;">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;padding:18px 20px;border-bottom:1px solid var(--border);">
+        <div>
+            <div class="card-title">
+                <span style="font-size:12.5px;background:var(--primary-3);color:var(--primary);border-radius:6px;padding:3px 8px;font-weight:700;margin-right:10px;">{{ course.code }}</span>
+                Attendance Records
+            </div>
+            <div class="card-subtitle" style="margin-top:4px;">{{ records|length }} record{{ records|length|pluralize }} found.</div>
+        </div>
+        <div class="toolbar">
+            <a href="{% url 'course-export' course.id %}" class="btn btn-primary">
+                <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+                Download CSV
+            </a>
+            <a href="{% url 'dashboard' %}" class="btn btn-ghost">← Dashboard</a>
+        </div>
+    </div>
+
+    <!-- Search filter (JS) -->
+    <div style="padding:14px 20px;border-bottom:1px solid var(--border);background:var(--panel-2);">
+        <input type="text" id="recordSearch" placeholder="Filter by student name or matric…" style="max-width:340px;margin:0;" oninput="filterRecords()">
+    </div>
+
+    <div class="table-wrap" style="border:none;border-radius:0;">
+        <table id="recordsTable">
+            <thead>
+                <tr>
+                    <th>Student</th>
+                    <th>Matric</th>
+                    <th>Session</th>
+                    <th>Status</th>
+                    <th>Marked At</th>
+                </tr>
+            </thead>
+            <tbody id="recordsBody">
+                {% for record in records %}
+                <tr>
+                    <td style="font-weight:500;">{{ record.student.full_name }}</td>
+                    <td><span style="font-family:var(--mono);font-size:12.5px;background:var(--panel-2);border:1px solid var(--border);border-radius:6px;padding:2px 8px;">{{ record.student.matric_number }}</span></td>
+                    <td class="td-muted">{{ record.session.title }}</td>
+                    <td>
+                        {% if record.status == "present" %}
+                            <span class="badge badge-present">Present</span>
+                        {% else %}
+                            <span class="badge badge-late">Late</span>
+                        {% endif %}
+                    </td>
+                    <td class="td-muted">{{ record.marked_at|date:"M d, Y H:i" }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5">
+                        <div class="empty-state">
+                            <div class="empty-state-icon">📋</div>
+                            <h3>No records yet</h3>
+                            <p>Attendance records will appear here once students start marking.</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+function filterRecords() {
+    const q = document.getElementById('recordSearch').value.toLowerCase();
+    document.querySelectorAll('#recordsBody tr').forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(q) ? '' : 'none';
+    });
+}
+</script>
+{% endblock %}

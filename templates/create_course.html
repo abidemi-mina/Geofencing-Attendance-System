@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block title %}Create Course{% endblock %}
+{% block page_heading %}Create Course{% endblock %}
+{% block page_subheading %}Add a new course and assign it to your dashboard.{% endblock %}
+
+{% block content %}
+<section class="page-panel" style="max-width:760px;">
+    <h3 style="margin-top:0;">Course Details</h3>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">Create Course</button>
+    </form>
+</section>
+{% endblock %}

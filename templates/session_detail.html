@@ -1,0 +1,230 @@
+{% extends 'base.html' %}
+{% block title %}Session Detail{% endblock %}
+{% block page_heading %}Session Detail{% endblock %}
+{% block page_subheading %}Share this session with students via link or QR code.{% endblock %}
+
+{% block extra_head %}
+<style>
+.share-input-wrap { position: relative; display: flex; gap: 8px; }
+.share-input-wrap input { flex: 1; font-family: var(--mono); font-size: 12.5px; }
+
+.qr-frame {
+    background: #fff; border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px;
+    display: inline-flex; align-items: center; justify-content: center;
+}
+
+.info-row {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 12px 0; border-bottom: 1px solid var(--border);
+    font-size: 13.5px;
+}
+.info-row:last-child { border-bottom: none; }
+.info-label { color: var(--muted); width: 100px; flex-shrink: 0; font-size: 12.5px; font-weight: 500; margin-top: 1px; }
+.info-value { font-weight: 500; flex: 1; }
+
+.token-block {
+    background: var(--primary);
+    color: #fff;
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    margin-bottom: 16px;
+}
+
+.countdown-ring { position: relative; width: 52px; height: 52px; flex-shrink: 0; }
+.countdown-ring svg { transform: rotate(-90deg); }
+.countdown-ring .ring-bg { fill: none; stroke: rgba(255,255,255,.2); stroke-width: 4; }
+.countdown-ring .ring-fg { fill: none; stroke: #fff; stroke-width: 4; stroke-linecap: round; transition: stroke-dashoffset .5s linear; }
+.countdown-num { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="grid-2" style="align-items:start;">
+
+    <!-- Left: Session info + sharing -->
+    <div style="display:flex;flex-direction:column;gap:16px;">
+
+        <!-- Session metadata -->
+        <div class="card" style="padding:0;overflow:hidden;">
+            <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;">
+                <div>
+                    <div class="card-title">Session Information</div>
+                    <div class="card-subtitle">Details for this attendance session.</div>
+                </div>
+                <a href="{% url 'toggle-session' session.id %}"
+                   class="btn btn-sm {% if session.status == 'draft' %}btn-success{% elif session.status == 'active' %}btn-warning{% else %}btn-secondary{% endif %}"
+                   onclick="return confirm('Toggle this session\'s status?')">
+                    {% if session.status == 'draft' %}Activate{% elif session.status == 'active' %}Close Session{% else %}Reopen{% endif %}
+                </a>
+            </div>
+            <div style="padding:16px 20px;">
+                <div class="info-row">
+                    <div class="info-label">Title</div>
+                    <div class="info-value">{{ session.title }}</div>
+                </div>
+                <div class="info-row">
+                    <div class="info-label">Course</div>
+                    <div class="info-value">
+                        <span style="font-size:12.5px;background:var(--primary-3);color:var(--primary);border-radius:6px;padding:3px 8px;font-weight:600;">{{ session.course.code }}</span>
+                        <span style="margin-left:8px;">{{ session.course.title }}</span>
+                    </div>
+                </div>
+                <div class="info-row">
+                    <div class="info-label">Status</div>
+                    <div class="info-value">
+                        {% if session.status == "active" %}
+                            <span class="badge badge-active"><span class="badge-dot pulse" style="background:var(--success);"></span>Active</span>
+                        {% elif session.status == "draft" %}
+                            <span class="badge badge-draft">Draft</span>
+                        {% else %}
+                            <span class="badge badge-closed">Closed</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="info-row">
+                    <div class="info-label">Opens</div>
+                    <div class="info-value">{{ session.start_time|date:"D, M d Y — H:i" }}</div>
+                </div>
+                <div class="info-row">
+                    <div class="info-label">Closes</div>
+                    <div class="info-value">{{ session.end_time|date:"D, M d Y — H:i" }}</div>
+                </div>
+                {% if session.late_after %}
+                <div class="info-row">
+                    <div class="info-label">Late after</div>
+                    <div class="info-value">{{ session.late_after|date:"H:i" }}</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Share section -->
+        <div class="card" style="padding:20px;">
+            <div class="card-title" style="margin-bottom:6px;">Share with Students</div>
+            <div class="card-subtitle" style="margin-bottom:16px;">Copy this link or let students scan the QR code on the right.</div>
+
+            <label class="form-label">Attendance Link</label>
+            <div class="share-input-wrap" style="margin-bottom:10px;">
+                <input type="text" id="shareLink" value="{{ share_link }}" readonly style="margin-bottom:0;background:var(--panel-2);cursor:text;">
+                <button type="button" class="btn btn-primary" id="copyBtn" onclick="copyLink()">
+                    <svg viewBox="0 0 20 20" fill="currentColor" style="width:15px;height:15px;"><path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z"/><path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z"/></svg>
+                    Copy
+                </button>
+            </div>
+            <p id="copyStatus" style="font-size:12.5px;color:var(--success);height:18px;margin-bottom:14px;"></p>
+
+            <hr class="divider">
+
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:4px;">
+                <a href="{% url 'session-export' session.id %}" class="btn btn-secondary">
+                    <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+                    Download CSV
+                </a>
+                <a href="{% url 'dashboard' %}" class="btn btn-ghost">← Back to Dashboard</a>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Right: QR + Token -->
+    <div style="display:flex;flex-direction:column;gap:16px;">
+
+        <!-- Live token card -->
+        <div class="token-block">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+                <div>
+                    <div style="font-size:12px;opacity:.7;font-weight:600;text-transform:uppercase;letter-spacing:.06em;">Live Token</div>
+                    <div style="font-size:13px;opacity:.85;margin-top:2px;">Rotates every 45 seconds automatically</div>
+                </div>
+                <div class="countdown-ring">
+                    <svg viewBox="0 0 52 52" width="52" height="52">
+                        <circle class="ring-bg" cx="26" cy="26" r="22"/>
+                        <circle class="ring-fg" id="timerRing" cx="26" cy="26" r="22" stroke-dasharray="138.2" stroke-dashoffset="0"/>
+                    </svg>
+                    <div class="countdown-num" id="timerNum">45</div>
+                </div>
+            </div>
+            <div id="tokenValue" style="font-family:var(--mono);font-size:17px;font-weight:500;letter-spacing:.08em;word-break:break-all;margin-bottom:8px;">
+                Loading...
+            </div>
+            <div id="expiresAt" style="font-size:12px;opacity:.7;"></div>
+        </div>
+
+        <!-- QR code -->
+        <div class="card" style="text-align:center;padding:24px;">
+            <div class="card-title" style="margin-bottom:4px;">Rotating QR Code</div>
+            <div class="card-subtitle" style="margin-bottom:20px;">Refreshes with each new token. Display this on screen or projector.</div>
+
+            <div class="qr-frame" style="margin:0 auto;">
+                <img
+                    id="qrImage"
+                    src="{% url 'session-qr' session.id %}"
+                    alt="Attendance QR Code"
+                    style="width:220px;height:220px;border-radius:8px;display:block;"
+                >
+            </div>
+
+            <p style="font-size:12.5px;color:var(--muted);margin-top:16px;line-height:1.5;">
+                Students scan this with any camera app.<br>
+                It links directly to the attendance page.
+            </p>
+
+            <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:10px;">
+                <span class="badge-dot pulse" style="background:var(--success);width:7px;height:7px;border-radius:50%;display:inline-block;"></span>
+                <span style="font-size:12px;color:var(--muted);">Auto-refreshing every 45 seconds</span>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const LIFETIME = 45;
+let remaining  = LIFETIME;
+const circumference = 2 * Math.PI * 22;
+const ring = document.getElementById('timerRing');
+const timerNum = document.getElementById('timerNum');
+
+async function refreshToken() {
+    const res  = await fetch("{% url 'session-token-api' session.id %}");
+    const data = await res.json();
+    document.getElementById('tokenValue').textContent = data.token;
+    const exp = new Date(data.expires_at);
+    document.getElementById('expiresAt').textContent = `Expires ${exp.toLocaleTimeString('en-GB')}`;
+    document.getElementById('qrImage').src = "{% url 'session-qr' session.id %}?t=" + Date.now();
+    remaining = LIFETIME;
+}
+
+function tickTimer() {
+    remaining = Math.max(0, remaining - 1);
+    timerNum.textContent = remaining;
+    const progress = remaining / LIFETIME;
+    ring.style.strokeDashoffset = circumference * (1 - progress);
+    if (remaining <= 0) refreshToken();
+}
+
+async function copyLink() {
+    const input = document.getElementById('shareLink');
+    const status = document.getElementById('copyStatus');
+    const btn  = document.getElementById('copyBtn');
+
+    try { await navigator.clipboard.writeText(input.value); }
+    catch { input.select(); document.execCommand('copy'); }
+
+    status.textContent = '✓ Link copied to clipboard';
+    btn.textContent = '✓ Copied!';
+    btn.style.background = 'var(--success)';
+    setTimeout(() => {
+        status.textContent = '';
+        btn.textContent = 'Copy';
+        btn.style.background = '';
+    }, 2500);
+}
+
+refreshToken();
+setInterval(tickTimer, 1000);
+</script>
+{% endblock %}

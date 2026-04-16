@@ -1,0 +1,231 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard{% endblock %}
+{% block page_heading %}Lecturer Dashboard{% endblock %}
+{% block page_subheading %}Manage your courses, sessions, and student attendance records.{% endblock %}
+
+{% block content %}
+
+<!-- Stat strip -->
+<div class="stats-row">
+    <div class="stat-card">
+        <div class="stat-icon" style="background:#eef2ff;color:var(--primary);">
+            <svg viewBox="0 0 20 20" fill="currentColor" style="width:20px;height:20px;"><path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z"/></svg>
+        </div>
+        <div class="stat-body">
+            <div class="stat-label">Courses</div>
+            <div class="stat-value">{{ courses|length }}</div>
+            <div class="stat-sub">Under your management</div>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon" style="background:#f0fdf4;color:var(--success);">
+            <svg viewBox="0 0 20 20" fill="currentColor" style="width:20px;height:20px;"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/></svg>
+        </div>
+        <div class="stat-body">
+            <div class="stat-label">Active Sessions</div>
+            <div class="stat-value" style="color:var(--success);">
+                {% with active_count=session_summaries|length %}
+                {{ session_summaries|length }}
+                {% endwith %}
+            </div>
+            <div class="stat-sub">
+                <span class="badge badge-active" style="padding:2px 7px;font-size:11px;">
+                    <span class="badge-dot pulse" style="background:var(--success);"></span>
+                    Live tracking
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon" style="background:#fff7ed;color:var(--warning);">
+            <svg viewBox="0 0 20 20" fill="currentColor" style="width:20px;height:20px;"><path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/></svg>
+        </div>
+        <div class="stat-body">
+            <div class="stat-label">Total Marked</div>
+            <div class="stat-value">
+                {% with total=0 %}
+                {% for item in session_summaries %}{% endfor %}
+                {{ session_summaries|length }}
+                {% endwith %}
+            </div>
+            <div class="stat-sub">Across all sessions</div>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon" style="background:#eff6ff;color:var(--info);">
+            <svg viewBox="0 0 20 20" fill="currentColor" style="width:20px;height:20px;"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+        </div>
+        <div class="stat-body">
+            <div class="stat-label">Exports Ready</div>
+            <div class="stat-value">CSV</div>
+            <div class="stat-sub">Per-course &amp; per-session</div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Quick actions ─────────────────────────────────────── -->
+<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px;">
+    <div>
+        <div class="section-title">Your Courses</div>
+        <div class="section-sub" style="margin-bottom:0;">Click a course to manage attendance and students.</div>
+    </div>
+    <div class="toolbar">
+        <a href="{% url 'create-course' %}" class="btn btn-primary">
+            <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/></svg>
+            New Course
+        </a>
+        <a href="{% url 'upload-students' %}" class="btn btn-secondary">
+            <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
+            Upload CSV
+        </a>
+        <a href="{% url 'create-session' %}" class="btn btn-secondary">
+            <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/></svg>
+            Create Session
+        </a>
+    </div>
+</div>
+
+<!-- ── Course grid ────────────────────────────────────────── -->
+<div class="course-grid mb-24">
+    {% for course in courses %}
+    <div class="card" style="display:flex;flex-direction:column;gap:0;">
+        <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:14px;">
+            <div style="width:42px;height:42px;border-radius:10px;background:var(--primary-3);color:var(--primary);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;letter-spacing:-.3px;">
+                {{ course.code|slice:":3" }}
+            </div>
+            <div style="flex:1;min-width:0;">
+                <div style="font-size:15px;font-weight:600;letter-spacing:-.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ course.code }}</div>
+                <div style="font-size:12.5px;color:var(--muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ course.title }}</div>
+            </div>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
+            <span style="font-size:11.5px;background:var(--panel-2);border:1px solid var(--border);border-radius:6px;padding:3px 8px;color:var(--muted);font-weight:500;">
+                Level {{ course.level }}
+            </span>
+        </div>
+
+        <hr class="divider" style="margin:0 0 14px;">
+
+        <div class="toolbar" style="flex-wrap:nowrap;overflow-x:auto;">
+            <a href="{% url 'course-records' course.id %}" class="btn btn-primary btn-sm" style="flex-shrink:0;">
+                <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/><path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"/></svg>
+                Records
+            </a>
+            <a href="{% url 'course-export' course.id %}" class="btn btn-secondary btn-sm" style="flex-shrink:0;">
+                <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+                Export
+            </a>
+            <a href="{% url 'course-students' course.id %}" class="btn btn-ghost btn-sm" style="flex-shrink:0;">
+                <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/></svg>
+                Students
+            </a>
+        </div>
+    </div>
+    {% empty %}
+    <div style="grid-column:1/-1;">
+        <div class="empty-state">
+            <div class="empty-state-icon">📚</div>
+            <h3>No courses yet</h3>
+            <p>Create your first course to start managing attendance.</p>
+            <a href="{% url 'create-course' %}" class="btn btn-primary">Create a Course</a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- ── Sessions table ─────────────────────────────────────── -->
+<div class="card" style="padding:0;overflow:hidden;">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--border);">
+        <div>
+            <div class="card-title">Attendance Sessions</div>
+            <div class="card-subtitle">All sessions across your courses. Toggle status or share links.</div>
+        </div>
+        <a href="{% url 'create-session' %}" class="btn btn-primary btn-sm">
+            <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/></svg>
+            New Session
+        </a>
+    </div>
+
+    <div class="table-wrap" style="border:none;border-radius:0;">
+        <table>
+            <thead>
+                <tr>
+                    <th>Session</th>
+                    <th>Course</th>
+                    <th>Status</th>
+                    <th>Started</th>
+                    <th style="text-align:center;">Marked</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in session_summaries %}
+                <tr>
+                    <td>
+                        <div style="font-weight:500;color:var(--text);">{{ item.session.title }}</div>
+                        <div class="td-muted">{{ item.session.end_time|date:"M d, Y H:i" }} end</div>
+                    </td>
+                    <td>
+                        <span style="font-size:12.5px;background:var(--primary-3);color:var(--primary);border-radius:6px;padding:3px 8px;font-weight:600;">
+                            {{ item.session.course.code }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if item.session.status == "active" %}
+                            <span class="badge badge-active">
+                                <span class="badge-dot pulse" style="background:var(--success);"></span>
+                                Active
+                            </span>
+                        {% elif item.session.status == "draft" %}
+                            <span class="badge badge-draft">Draft</span>
+                        {% else %}
+                            <span class="badge badge-closed">Closed</span>
+                        {% endif %}
+                    </td>
+                    <td class="td-muted">{{ item.session.start_time|date:"M d, H:i" }}</td>
+                    <td style="text-align:center;">
+                        <span style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;background:var(--panel-2);border:1px solid var(--border);border-radius:8px;font-size:13px;font-weight:600;">
+                            {{ item.count }}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="toolbar" style="flex-wrap:nowrap;gap:6px;">
+                            <a href="{% url 'session-detail' item.session.id %}" class="btn btn-primary btn-sm" title="Open & share">
+                                <svg viewBox="0 0 20 20" fill="currentColor"><path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z"/><path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z"/></svg>
+                                Open
+                            </a>
+                            <a href="{% url 'session-export' item.session.id %}" class="btn btn-secondary btn-sm" title="Export CSV">
+                                <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+                            </a>
+                            <a
+                                href="{% url 'toggle-session' item.session.id %}"
+                                class="btn btn-sm {% if item.session.status == 'draft' %}btn-success{% elif item.session.status == 'active' %}btn-warning{% else %}btn-secondary{% endif %}"
+                                title="Toggle session status"
+                                onclick="return confirm('Change session status?')"
+                            >
+                                {% if item.session.status == 'draft' %}Activate{% elif item.session.status == 'active' %}Close{% else %}Closed{% endif %}
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6">
+                        <div class="empty-state" style="padding:40px 24px;">
+                            <div class="empty-state-icon">🕐</div>
+                            <h3>No sessions yet</h3>
+                            <p>Create your first attendance session to get started.</p>
+                            <a href="{% url 'create-session' %}" class="btn btn-primary">Create Session</a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

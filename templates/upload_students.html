@@ -1,0 +1,175 @@
+{% extends 'base.html' %}
+{% block title %}Upload Students{% endblock %}
+{% block page_heading %}Upload Students{% endblock %}
+{% block page_subheading %}Import student records and course registrations from a CSV file.{% endblock %}
+
+{% block content %}
+<div class="grid-2" style="align-items:start;max-width:1000px;">
+
+    <!-- Left: Upload form -->
+    <div style="display:flex;flex-direction:column;gap:16px;">
+        <div class="card" style="padding:0;overflow:hidden;">
+            <div style="padding:20px 24px;border-bottom:1px solid var(--border);">
+                <div class="card-title">CSV Upload</div>
+                <div class="card-subtitle">Upload a correctly formatted CSV to register students and enrol them in courses.</div>
+            </div>
+
+            <form method="post" enctype="multipart/form-data" id="uploadForm" style="padding:24px;">
+                {% csrf_token %}
+
+                <div
+                    id="dropzone"
+                    style="border:2px dashed var(--border-2);border-radius:var(--radius);padding:36px 24px;text-align:center;margin-bottom:20px;transition:border-color .2s,background .2s;cursor:pointer;background:var(--panel-2);"
+                    onclick="document.getElementById('csvFile').click()"
+                >
+                    <svg viewBox="0 0 20 20" fill="currentColor" style="width:36px;height:36px;color:var(--muted-2);margin:0 auto 12px;display:block;">
+                        <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
+                    </svg>
+                    <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px;" id="dropTitle">Drop your CSV here</div>
+                    <div style="font-size:13px;color:var(--muted);" id="dropSub">or click to browse — max 5 MB</div>
+                </div>
+
+                <input type="file" name="file" id="csvFile" accept=".csv" required style="display:none;margin:0;">
+
+                <div id="fileChosen" style="display:none;align-items:center;gap:12px;padding:12px 16px;background:var(--success-bg);border:1px solid #bbf7d0;border-radius:var(--radius-sm);margin-bottom:16px;">
+                    <svg viewBox="0 0 20 20" fill="currentColor" style="width:18px;height:18px;color:var(--success);flex-shrink:0;"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                    <div style="font-size:13px;color:var(--success);font-weight:500;" id="fileName">File selected</div>
+                    <button type="button" onclick="clearFile()" style="margin-left:auto;background:none;border:none;cursor:pointer;color:var(--danger);font-size:12px;padding:0;font-weight:600;">Remove</button>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-lg" id="uploadBtn" style="width:100%;justify-content:center;" disabled>
+                    <svg viewBox="0 0 20 20" fill="currentColor" style="width:16px;height:16px;"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
+                    Upload Students
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Right: Guide -->
+    <div style="display:flex;flex-direction:column;gap:16px;">
+
+        <div class="card" style="padding:20px;">
+            <div class="card-title" style="margin-bottom:14px;">Required CSV Columns</div>
+
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Column</th>
+                            <th>Example</th>
+                            <th>Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code style="font-family:var(--mono);background:var(--panel-2);padding:2px 6px;border-radius:4px;font-size:12px;">full_name</code></td>
+                            <td class="td-muted">John Doe</td>
+                            <td class="td-muted">Full legal name</td>
+                        </tr>
+                        <tr>
+                            <td><code style="font-family:var(--mono);background:var(--panel-2);padding:2px 6px;border-radius:4px;font-size:12px;">matric_number</code></td>
+                            <td class="td-muted">CSC/19/0001</td>
+                            <td class="td-muted">Unique per student</td>
+                        </tr>
+                        <tr>
+                            <td><code style="font-family:var(--mono);background:var(--panel-2);padding:2px 6px;border-radius:4px;font-size:12px;">level</code></td>
+                            <td class="td-muted">300</td>
+                            <td class="td-muted">Must match course</td>
+                        </tr>
+                        <tr>
+                            <td><code style="font-family:var(--mono);background:var(--panel-2);padding:2px 6px;border-radius:4px;font-size:12px;">course_code</code></td>
+                            <td class="td-muted">CSC 301</td>
+                            <td class="td-muted">Must already exist</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card" style="padding:20px;">
+            <div class="card-title" style="margin-bottom:12px;">Important Rules</div>
+            <div style="display:flex;flex-direction:column;gap:10px;">
+                <div style="display:flex;align-items:flex-start;gap:10px;font-size:13px;">
+                    <span style="width:20px;height:20px;background:var(--info-bg);color:var(--info);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">i</span>
+                    One row per student-course registration. A student in 3 courses needs 3 rows.
+                </div>
+                <div style="display:flex;align-items:flex-start;gap:10px;font-size:13px;">
+                    <span style="width:20px;height:20px;background:var(--info-bg);color:var(--info);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">i</span>
+                    Existing students are updated, not duplicated. Matric number is the unique key.
+                </div>
+                <div style="display:flex;align-items:flex-start;gap:10px;font-size:13px;">
+                    <span style="width:20px;height:20px;background:var(--warning-bg);color:var(--warning);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">!</span>
+                    Course codes must be created in the system first — unmatched codes are skipped.
+                </div>
+                <div style="display:flex;align-items:flex-start;gap:10px;font-size:13px;">
+                    <span style="width:20px;height:20px;background:var(--warning-bg);color:var(--warning);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">!</span>
+                    Default password for new students is <code style="font-family:var(--mono);font-size:11.5px;background:var(--panel-2);padding:2px 5px;border-radius:4px;">ChangeMe123!</code>
+                </div>
+            </div>
+        </div>
+
+        <div class="card" style="padding:20px;background:var(--panel-2);border-style:dashed;">
+            <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--muted);">Sample CSV Preview</div>
+            <pre style="font-family:var(--mono);font-size:11.5px;color:var(--muted);background:var(--panel);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;overflow-x:auto;line-height:1.8;margin:0;">full_name,matric_number,level,course_code
+John Doe,CSC/19/0001,300,CSC 301
+Jane Smith,CSC/19/0002,300,CSC 301
+John Doe,CSC/19/0001,300,MTH 302</pre>
+        </div>
+
+    </div>
+</div>
+
+<script>
+const fileInput = document.getElementById('csvFile');
+const dropzone  = document.getElementById('dropzone');
+const fileChosen = document.getElementById('fileChosen');
+const fileName  = document.getElementById('fileName');
+const uploadBtn = document.getElementById('uploadBtn');
+
+fileInput.addEventListener('change', function() {
+    if (this.files.length) {
+        const f = this.files[0];
+        if (!f.name.endsWith('.csv')) {
+            window.toast('Wrong file type', 'Only .csv files are accepted.', 'error');
+            clearFile(); return;
+        }
+        if (f.size > 5 * 1024 * 1024) {
+            window.toast('File too large', 'Maximum file size is 5 MB.', 'error');
+            clearFile(); return;
+        }
+        fileName.textContent = `${f.name} (${(f.size / 1024).toFixed(1)} KB)`;
+        fileChosen.style.display = 'flex';
+        dropzone.style.borderColor = 'var(--success)';
+        dropzone.style.background  = 'var(--success-bg)';
+        document.getElementById('dropTitle').textContent = 'File selected';
+        document.getElementById('dropSub').textContent = f.name;
+        uploadBtn.disabled = false;
+    }
+});
+
+function clearFile() {
+    fileInput.value = '';
+    fileChosen.style.display = 'none';
+    dropzone.style.borderColor = '';
+    dropzone.style.background  = 'var(--panel-2)';
+    document.getElementById('dropTitle').textContent = 'Drop your CSV here';
+    document.getElementById('dropSub').textContent   = 'or click to browse — max 5 MB';
+    uploadBtn.disabled = true;
+}
+
+dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.style.borderColor = 'var(--primary)'; dropzone.style.background = 'var(--primary-3)'; });
+dropzone.addEventListener('dragleave', () => { dropzone.style.borderColor = ''; dropzone.style.background = 'var(--panel-2)'; });
+dropzone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropzone.style.borderColor = ''; dropzone.style.background = 'var(--panel-2)';
+    if (e.dataTransfer.files.length) {
+        fileInput.files = e.dataTransfer.files;
+        fileInput.dispatchEvent(new Event('change'));
+    }
+});
+
+document.getElementById('uploadForm').addEventListener('submit', function() {
+    uploadBtn.classList.add('btn-loading');
+});
+</script>
+{% endblock %}
