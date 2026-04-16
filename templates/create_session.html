@@ -1,35 +1,89 @@
 {% extends 'base.html' %}
-{% block title %}Create Course{% endblock %}
-{% block page_heading %}Create Course{% endblock %}
-{% block page_subheading %}Add a new course to your teaching portfolio.{% endblock %}
+{% block title %}Create Session{% endblock %}
+{% block page_heading %}Create Attendance Session{% endblock %}
+{% block page_subheading %}Set session window and geofence for attendance marking.{% endblock %}
 
 {% block content %}
-<div style="max-width:660px;">
+<div style="max-width:760px;display:flex;flex-direction:column;gap:16px;">
     <div class="card" style="padding:0;overflow:hidden;">
         <div style="padding:20px 24px;border-bottom:1px solid var(--border);">
-            <div class="card-title">Course Details</div>
-            <div class="card-subtitle">Enter the course code, full title, and level. You can add students via CSV after creation.</div>
+            <div class="card-title">Session Details</div>
+            <div class="card-subtitle">Create a session and assign it to one of your courses.</div>
         </div>
 
-        <form method="post" style="padding:24px;" id="courseForm">
+        <form method="post" style="padding:24px;" id="sessionForm">
             {% csrf_token %}
 
+            {% if form.non_field_errors %}
+            <div class="alert-bar alert-error" style="margin-bottom:14px;">
+                {{ form.non_field_errors|join:", " }}
+            </div>
+            {% endif %}
+
             <div class="form-group">
-                <label class="form-label" for="id_code">Course Code <span class="required" style="color:var(--danger);">*</span></label>
-                <input type="text" name="code" id="id_code" placeholder="e.g. CSC 301" maxlength="20" required
-                       style="text-transform:uppercase;letter-spacing:.04em;font-weight:600;">
-                <div class="form-hint" style="font-size:12px;color:var(--muted);margin-top:4px;">Automatically uppercased. Must be unique across the system.</div>
+                <label class="form-label" for="{{ form.title.id_for_label }}">{{ form.title.label }}</label>
+                {{ form.title }}
+                {% if form.title.errors %}<div class="form-hint" style="color:var(--danger);">{{ form.title.errors|join:", " }}</div>{% endif %}
             </div>
 
             <div class="form-group">
-                <label class="form-label" for="id_title">Course Title <span class="required" style="color:var(--danger);">*</span></label>
-                <input type="text" name="title" id="id_title" placeholder="e.g. Introduction to Computer Science" maxlength="150" required>
+                <label class="form-label" for="{{ form.course.id_for_label }}">{{ form.course.label }}</label>
+                {{ form.course }}
+                {% if form.course.errors %}<div class="form-hint" style="color:var(--danger);">{{ form.course.errors|join:", " }}</div>{% endif %}
             </div>
 
             <div class="form-group">
-                <label class="form-label" for="id_level">Student Level <span class="required" style="color:var(--danger);">*</span></label>
-                <input type="text" name="level" id="id_level" placeholder="e.g. 300" maxlength="10" required>
-                <div class="form-hint" style="font-size:12px;color:var(--muted);margin-top:4px;">Used to match students during attendance. Must match the level in your CSV uploads.</div>
+                <label class="form-label" for="{{ form.shape_type.id_for_label }}">{{ form.shape_type.label }}</label>
+                {{ form.shape_type }}
+                {% if form.shape_type.errors %}<div class="form-hint" style="color:var(--danger);">{{ form.shape_type.errors|join:", " }}</div>{% endif %}
+            </div>
+
+            <div id="circleFields" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;">
+                <div class="form-group" style="margin:0;">
+                    <label class="form-label" for="{{ form.center_lat.id_for_label }}">{{ form.center_lat.label }}</label>
+                    {{ form.center_lat }}
+                    {% if form.center_lat.errors %}<div class="form-hint" style="color:var(--danger);">{{ form.center_lat.errors|join:", " }}</div>{% endif %}
+                </div>
+                <div class="form-group" style="margin:0;">
+                    <label class="form-label" for="{{ form.center_lng.id_for_label }}">{{ form.center_lng.label }}</label>
+                    {{ form.center_lng }}
+                    {% if form.center_lng.errors %}<div class="form-hint" style="color:var(--danger);">{{ form.center_lng.errors|join:", " }}</div>{% endif %}
+                </div>
+                <div class="form-group" style="margin:0;">
+                    <label class="form-label" for="{{ form.radius_meters.id_for_label }}">{{ form.radius_meters.label }}</label>
+                    {{ form.radius_meters }}
+                    {% if form.radius_meters.errors %}<div class="form-hint" style="color:var(--danger);">{{ form.radius_meters.errors|join:", " }}</div>{% endif %}
+                </div>
+            </div>
+
+            <div id="polygonFields" class="form-group" style="display:none;">
+                <label class="form-label" for="id_polygon_points">Polygon Points (JSON)</label>
+                <textarea name="polygon_points" id="id_polygon_points" rows="4" placeholder='[{"lat": 7.1, "lng": 3.2}, {"lat": 7.2, "lng": 3.3}, {"lat": 7.3, "lng": 3.1}]'></textarea>
+                <div class="form-hint" style="font-size:12px;color:var(--muted);">For polygon sessions, provide at least 3 points in JSON format.</div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;">
+                <div class="form-group" style="margin:0;">
+                    <label class="form-label" for="{{ form.start_time.id_for_label }}">{{ form.start_time.label }}</label>
+                    {{ form.start_time }}
+                    {% if form.start_time.errors %}<div class="form-hint" style="color:var(--danger);">{{ form.start_time.errors|join:", " }}</div>{% endif %}
+                </div>
+                <div class="form-group" style="margin:0;">
+                    <label class="form-label" for="{{ form.end_time.id_for_label }}">{{ form.end_time.label }}</label>
+                    {{ form.end_time }}
+                    {% if form.end_time.errors %}<div class="form-hint" style="color:var(--danger);">{{ form.end_time.errors|join:", " }}</div>{% endif %}
+                </div>
+                <div class="form-group" style="margin:0;">
+                    <label class="form-label" for="{{ form.late_after.id_for_label }}">{{ form.late_after.label }}</label>
+                    {{ form.late_after }}
+                    {% if form.late_after.errors %}<div class="form-hint" style="color:var(--danger);">{{ form.late_after.errors|join:", " }}</div>{% endif %}
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="{{ form.status.id_for_label }}">{{ form.status.label }}</label>
+                {{ form.status }}
+                {% if form.status.errors %}<div class="form-hint" style="color:var(--danger);">{{ form.status.errors|join:", " }}</div>{% endif %}
             </div>
 
             <hr class="divider">
@@ -37,32 +91,40 @@
             <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
                 <button type="submit" class="btn btn-primary btn-lg" id="createBtn">
                     <svg viewBox="0 0 20 20" fill="currentColor" style="width:16px;height:16px;"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/></svg>
-                    Create Course
+                    Create Session
                 </button>
                 <a href="{% url 'dashboard' %}" class="btn btn-ghost">Cancel</a>
             </div>
         </form>
     </div>
 
-    <!-- Helper card -->
-    <div class="card" style="margin-top:16px;background:var(--info-bg);border-color:#bfdbfe;padding:16px 20px;">
-        <div style="font-size:13.5px;font-weight:600;color:var(--info);margin-bottom:8px;">After creating this course</div>
-        <ul style="list-style:none;display:flex;flex-direction:column;gap:6px;">
-            <li style="font-size:13px;color:#1e40af;display:flex;gap:8px;"><span>1.</span><span>Go to <strong>Upload Students</strong> and import a CSV with this course code.</span></li>
-            <li style="font-size:13px;color:#1e40af;display:flex;gap:8px;"><span>2.</span><span>Create an <strong>Attendance Session</strong> and assign it to this course.</span></li>
-            <li style="font-size:13px;color:#1e40af;display:flex;gap:8px;"><span>3.</span><span>Share the session link or QR code with students.</span></li>
-        </ul>
+    {% if not form.fields.course.queryset %}
+    <div class="card" style="padding:16px 20px;background:var(--warning-bg);border-color:#fcd34d;">
+        <div style="font-size:13.5px;font-weight:600;color:#92400e;margin-bottom:4px;">No courses available yet</div>
+        <div style="font-size:13px;color:#92400e;">Create a course first before creating attendance sessions.</div>
+        <div style="margin-top:10px;"><a href="{% url 'create-course' %}" class="btn btn-secondary btn-sm">Create Course</a></div>
     </div>
+    {% endif %}
 </div>
 
 <script>
-document.getElementById('id_code').addEventListener('input', function() {
-    const pos = this.selectionStart;
-    this.value = this.value.toUpperCase();
-    this.setSelectionRange(pos, pos);
-});
+const shapeField = document.getElementById('id_shape_type');
+const circleFields = document.getElementById('circleFields');
+const polygonFields = document.getElementById('polygonFields');
 
-document.getElementById('courseForm').addEventListener('submit', function() {
+function syncShapeFields() {
+    if (!shapeField) return;
+    const isPolygon = shapeField.value === 'polygon';
+    polygonFields.style.display = isPolygon ? 'block' : 'none';
+    circleFields.style.display = isPolygon ? 'none' : 'grid';
+}
+
+if (shapeField) {
+    shapeField.addEventListener('change', syncShapeFields);
+    syncShapeFields();
+}
+
+document.getElementById('sessionForm').addEventListener('submit', function() {
     document.getElementById('createBtn').classList.add('btn-loading');
 });
 </script>

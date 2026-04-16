@@ -471,6 +471,22 @@ class DashboardViewTests(TestCase):
         self.assertNotEqual(resp.status_code, 200)
 
 
+class CreateSessionViewTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.admin = make_admin()
+        make_course(self.admin)
+        self.client.force_login(self.admin)
+
+    def test_create_session_page_renders_session_fields(self):
+        resp = self.client.get(reverse("create-session"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Create Attendance Session")
+        self.assertContains(resp, 'name="title"')
+        self.assertContains(resp, 'name="course"')
+        self.assertContains(resp, 'name="shape_type"')
+
+
 class UploadStudentsViewTests(TestCase):
     def setUp(self):
         self.client = Client()
@@ -499,6 +515,53 @@ class UploadStudentsViewTests(TestCase):
         csv = "full_name,matric_number,level,course_code\nJane,CSC/20/001,300,XXX999"
         self._upload(csv)
         self.assertFalse(User.objects.filter(matric_number="CSC/20/001").exists())
+
+    def test_header_order_and_style_are_flexible(self):
+        csv = (
+            f"Course Code,Level,Full Name,Matric No\n"
+            f"{self.course.code},300,Jane Doe,CSC/20/777"
+        )
+        resp = self._upload(csv)
+        self.assertRedirects(resp, reverse("dashboard"))
+        self.assertTrue(User.objects.filter(matric_number="CSC/20/777").exists())
+
+    def test_semicolon_delimited_csv_is_supported(self):
+        csv = (
+            f"full_name;matric_number;level;course_code\n"
+            f"Jane Doe;CSC/20/888;300;{self.course.code}"
+        )
+        resp = self._upload(csv)
+        self.assertRedirects(resp, reverse("dashboard"))
+        self.assertTrue(User.objects.filter(matric_number="CSC/20/888").exists())
+
+
+class SessionTokenAPITests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.admin = make_admin()
+        self.course = make_course(self.admin)
+        self.student = make_student(level="300")
+        CourseRegistration.objects.create(student=self.student, course=self.course)
+        self.session = make_session(self.course, self.admin, status="active")
+
+    def test_student_can_fetch_token_for_enrolled_course(self):
+        self.client.force_login(self.student)
+        resp = self.client.get(reverse("session-token-api", kwargs={"session_id": self.session.id}))
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertIn("token", data)
+
+    def test_unenrolled_student_cannot_fetch_token(self):
+        outsider = make_student(matric="STU/20/999", level="300")
+        self.client.force_login(outsider)
+        resp = self.client.get(reverse("session-token-api", kwargs={"session_id": self.session.id}))
+        self.assertEqual(resp.status_code, 403)
+
+    def test_unenrolled_student_redirected_from_mark_page(self):
+        outsider = make_student(matric="STU/20/998", level="300")
+        self.client.force_login(outsider)
+        resp = self.client.get(reverse("student-mark-page", kwargs={"session_id": self.session.id}))
+        self.assertRedirects(resp, reverse("student-mark-home"))
 
 
 class MarkAttendanceAPITests(TestCase):

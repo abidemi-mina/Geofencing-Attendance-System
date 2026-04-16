@@ -216,16 +216,53 @@ def upload_students(request):
     try:
         text = uploaded_file.read().decode("utf-8-sig")
         lines = text.splitlines()
-        reader = csv.DictReader(lines)
+        if not lines:
+            messages.error(request, "The uploaded CSV is empty.")
+            return redirect("upload-students")
+
+        # Be flexible with delimiter and header styles so admins can upload
+        # files exported from different tools (Excel, Sheets, etc.).
+        sample = "\n".join(lines[:5])
+        try:
+            dialect = csv.Sniffer().sniff(sample, delimiters=",;\t|")
+        except csv.Error:
+            dialect = csv.excel
+
+        reader = csv.DictReader(lines, dialect=dialect)
+
+        def normalize_header(value: str) -> str:
+            return "".join(ch for ch in (value or "").strip().lower() if ch.isalnum())
 
         required_cols = {"full_name", "matric_number", "level", "course_code"}
-        actual_cols = set(reader.fieldnames or [])
-        missing = required_cols - actual_cols
+        aliases = {
+            "full_name": {"full_name", "full name", "fullname", "student_name", "student name", "name"},
+            "matric_number": {
+                "matric_number", "matric number", "matricnumber", "matric_no", "matric no",
+                "matric", "registration_number", "registration number", "reg_no", "reg no",
+            },
+            "level": {"level", "student_level", "student level", "class_level", "class level"},
+            "course_code": {"course_code", "course code", "coursecode", "course", "course_id", "course id"},
+        }
+
+        alias_lookup = {
+            normalize_header(alias): canonical
+            for canonical, alias_set in aliases.items()
+            for alias in alias_set
+        }
+
+        header_map = {}
+        for raw_header in (reader.fieldnames or []):
+            canonical = alias_lookup.get(normalize_header(raw_header))
+            if canonical and canonical not in header_map:
+                header_map[canonical] = raw_header
+
+        missing = required_cols - set(header_map.keys())
         if missing:
+            found_display = ", ".join(reader.fieldnames or []) or "(none)"
             messages.error(
                 request,
                 f"CSV is missing required columns: {', '.join(sorted(missing))}. "
-                f"Found: {', '.join(sorted(actual_cols))}."
+                f"Found: {found_display}."
             )
             return redirect("upload-students")
 
@@ -234,10 +271,10 @@ def upload_students(request):
         skipped_reasons = []
 
         for i, row in enumerate(reader, start=2):  # row 1 = header
-            full_name    = (row.get("full_name")    or "").strip()
-            matric_number = (row.get("matric_number") or "").strip().upper()
-            level        = (row.get("level")         or "").strip()
-            course_code  = (row.get("course_code")   or "").strip().upper()
+            full_name = (row.get(header_map["full_name"]) or "").strip()
+            matric_number = (row.get(header_map["matric_number"]) or "").strip().upper()
+            level = (row.get(header_map["level"]) or "").strip()
+            course_code = (row.get(header_map["course_code"]) or "").strip().upper()
 
             if not all([full_name, matric_number, level, course_code]):
                 skipped += 1
@@ -441,17 +478,39 @@ def session_export(request, session_id):
 # ─────────────────────────────────────────────────────────────
 
 @login_required
-@user_passes_test(is_admin_user, login_url="/login/")
 def session_token_api(request, session_id):
     """
     Return a fresh rotating token as JSON.
     Called every 45 seconds by the session detail page JS.
     """
-    session = get_object_or_404(
-        AttendanceSession.objects.select_related("course"),
-        id=session_id,
-        admin=request.user,
-    )
+    # Admin: can fetch token only for their own sessions.
+    # Student: can fetch token only if enrolled in the session's course.
+    if request.user.role == "admin":
+        session = get_object_or_404(
+            AttendanceSession.objects.select_related("course"),
+            id=session_id,
+            admin=request.user,
+        )
+    elif request.user.role == "student":
+        session = get_object_or_404(
+            AttendanceSession.objects.select_related("course"),
+            id=session_id,
+        )
+        is_enrolled = CourseRegistration.objects.filter(
+            student=request.user,
+            course=session.course,
+        ).exists()
+        if not is_enrolled:
+            return JsonResponse(
+                {"ok": False, "message": "You are not registered for this course."},
+                status=403,
+            )
+    else:
+        return JsonResponse(
+            {"ok": False, "message": "Account role not permitted for token access."},
+            status=403,
+        )
+
     payload = issue_rotating_token(
         session,
         request.build_absolute_uri("/").rstrip("/"),
@@ -526,6 +585,13 @@ def student_mark_page(request, session_id):
         AttendanceSession.objects.select_related("course"),
         id=session_id,
     )
+
+    if not CourseRegistration.objects.filter(
+        student=request.user,
+        course=session.course,
+    ).exists():
+        messages.error(request, "You are not registered for this course.")
+        return redirect("student-mark-home")
 
     # Check if already marked — show a clear status instead of allowing re-mark
     already_marked = AttendanceRecord.objects.filter(

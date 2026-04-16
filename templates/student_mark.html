@@ -262,6 +262,9 @@ async function refreshToken() {
     try {
         const res  = await fetch("{% url 'session-token-api' session.id %}");
         const data = await res.json();
+        if (!res.ok || !data.token) {
+            throw new Error(data.message || 'Unable to fetch token right now.');
+        }
         sessionToken = data.token;
 
         const tokenEl = document.getElementById('liveToken');
@@ -273,7 +276,7 @@ async function refreshToken() {
         document.getElementById('tokenExpiry').textContent =
             `Expires at ${exp.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit', second:'2-digit' })}`;
     } catch(e) {
-        document.getElementById('liveToken').textContent = 'Error fetching token';
+        document.getElementById('liveToken').textContent = e.message || 'Error fetching token';
     }
 }
 
